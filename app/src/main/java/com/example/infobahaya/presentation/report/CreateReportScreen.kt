@@ -33,6 +33,7 @@ import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
+import androidx.compose.material.icons.automirrored.filled.Send
 import androidx.compose.material.icons.filled.AddPhotoAlternate
 import androidx.compose.material.icons.filled.Check
 import androidx.compose.material.icons.filled.CheckCircle
@@ -41,7 +42,6 @@ import androidx.compose.material.icons.filled.ErrorOutline
 import androidx.compose.material.icons.filled.LocationOn
 import androidx.compose.material.icons.filled.MyLocation
 import androidx.compose.material.icons.filled.PhotoCamera
-import androidx.compose.material.icons.filled.Send
 import androidx.compose.material.icons.filled.Title
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
@@ -969,7 +969,7 @@ private fun SurfaceBottomActions(
                 text = if (currentStep == 6) "Kirim Laporan Sekarang" else "Lanjut",
                 onClick = onNext,
                 isLoading = isLoading,
-                trailingIcon = if (currentStep == 6) Icons.Default.Send else null,
+                trailingIcon = if (currentStep == 6) Icons.AutoMirrored.Filled.Send else null,
                 modifier = Modifier.weight(if (currentStep > 1) 1.5f else 1f)
             )
         }

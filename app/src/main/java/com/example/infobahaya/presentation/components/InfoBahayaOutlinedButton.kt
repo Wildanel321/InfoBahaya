@@ -4,6 +4,7 @@ import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
 import androidx.compose.foundation.BorderStroke
+import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
@@ -53,54 +54,40 @@ fun InfoBahayaOutlinedButton(
         ),
         contentPadding = PaddingValues(horizontal = 20.dp, vertical = 12.dp)
     ) {
-        Box(
-            contentAlignment = Alignment.Center,
-            modifier = Modifier.fillMaxWidth()
-        ) {
-            AnimatedVisibility(
-                visible = isLoading,
-                enter = fadeIn(),
-                exit = fadeOut()
+        if (isLoading) {
+            CircularProgressIndicator(
+                modifier = Modifier.size(24.dp),
+                color = contentColor,
+                strokeWidth = 2.5.dp
+            )
+        } else {
+            Row(
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.Center
             ) {
-                CircularProgressIndicator(
-                    modifier = Modifier.size(24.dp),
-                    color = contentColor,
-                    strokeWidth = 2.5.dp
-                )
-            }
-
-            AnimatedVisibility(
-                visible = !isLoading,
-                enter = fadeIn(),
-                exit = fadeOut()
-            ) {
-                Row(
-                    verticalAlignment = Alignment.CenterVertically
-                ) {
-                    if (leadingIcon != null) {
-                        Icon(
-                            imageVector = leadingIcon,
-                            contentDescription = null,
-                            modifier = Modifier.size(20.dp)
-                        )
-                        Spacer(modifier = Modifier.width(8.dp))
-                    }
-
-                    Text(
-                        text = text,
-                        style = MaterialTheme.typography.labelLarge.copy(
-                            fontWeight = FontWeight.SemiBold
-                        )
+                if (leadingIcon != null) {
+                    Icon(
+                        imageVector = leadingIcon,
+                        contentDescription = null,
+                        modifier = Modifier.size(20.dp)
                     )
+                    Spacer(modifier = Modifier.width(8.dp))
+                }
 
-                    if (trailingIcon != null) {
-                        Spacer(modifier = Modifier.width(8.dp))
-                        Icon(
-                            imageVector = trailingIcon,
-                            contentDescription = null,
-                            modifier = Modifier.size(20.dp)
-                        )
-                    }
+                Text(
+                    text = text,
+                    style = MaterialTheme.typography.labelLarge.copy(
+                        fontWeight = FontWeight.SemiBold
+                    )
+                )
+
+                if (trailingIcon != null) {
+                    Spacer(modifier = Modifier.width(8.dp))
+                    Icon(
+                        imageVector = trailingIcon,
+                        contentDescription = null,
+                        modifier = Modifier.size(20.dp)
+                    )
                 }
             }
         }

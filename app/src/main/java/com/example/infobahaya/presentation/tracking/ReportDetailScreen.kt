@@ -18,10 +18,10 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
+import androidx.compose.material.icons.automirrored.filled.Comment
 import androidx.compose.material.icons.filled.AccountCircle
 import androidx.compose.material.icons.filled.Apartment
 import androidx.compose.material.icons.filled.CheckCircle
-import androidx.compose.material.icons.filled.Comment
 import androidx.compose.material.icons.filled.LocationOn
 import androidx.compose.material.icons.filled.Phone
 import androidx.compose.material.icons.filled.PhotoCamera
@@ -397,7 +397,7 @@ private fun AuthorityNotesCard(report: HazardReport) {
                 Spacer(modifier = Modifier.height(12.dp))
                 Row(verticalAlignment = Alignment.CenterVertically) {
                     Icon(
-                        imageVector = Icons.Default.Comment,
+                        imageVector = Icons.AutoMirrored.Filled.Comment,
                         contentDescription = null,
                         tint = Color(0xFF8B5CF6),
                         modifier = Modifier.size(20.dp)

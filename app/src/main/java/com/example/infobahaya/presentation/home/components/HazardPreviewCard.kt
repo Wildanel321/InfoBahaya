@@ -18,7 +18,7 @@ import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.ArrowForward
+import androidx.compose.material.icons.automirrored.filled.ArrowForward
 import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.filled.LocationOn
 import androidx.compose.material.icons.filled.ThumbUp
@@ -204,7 +204,7 @@ fun HazardPreviewCard(
                     InfoBahayaButton(
                         text = "Lihat Detail Lengkap",
                         onClick = { onViewDetail(report.id) },
-                        trailingIcon = Icons.Default.ArrowForward
+                        trailingIcon = Icons.AutoMirrored.Filled.ArrowForward
                     )
                 }
             }

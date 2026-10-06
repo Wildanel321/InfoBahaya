@@ -211,7 +211,7 @@ fun HazardMapCanvas(
                         color = PrimaryBlue,
                         radius = 22f * scale.coerceIn(0.8f, 1.3f),
                         center = Offset(screenX, screenY),
-                        style = Stroke(width = 3.dpToPx())
+                        style = Stroke(width = 8f)
                     )
                 }
 
@@ -315,5 +315,3 @@ private fun DrawScope.drawHazardPin(
         center = center
     )
 }
-
-private fun Float.dpToPx(): Float = this * 2.5f

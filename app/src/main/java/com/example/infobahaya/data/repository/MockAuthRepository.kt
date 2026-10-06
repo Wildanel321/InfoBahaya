@@ -1,5 +1,6 @@
 package com.example.infobahaya.data.repository
 
+import com.example.infobahaya.core.util.ValidationUtils
 import com.example.infobahaya.domain.model.User
 import com.example.infobahaya.domain.model.UserRole
 import com.example.infobahaya.domain.repository.AuthRepository
@@ -38,14 +39,14 @@ class MockAuthRepository : AuthRepository {
     }
 
     override suspend fun login(email: String, password: String): Result<User> {
-        delay(600) // Realistic network delay
+        delay(100) // Fast and realistic response
         val cleanEmail = email.trim()
         val cleanPass = password.trim()
 
         if (cleanEmail.isBlank() || cleanPass.isBlank()) {
             return Result.failure(IllegalArgumentException("Email dan password wajib diisi"))
         }
-        if (!android.util.Patterns.EMAIL_ADDRESS.matcher(cleanEmail).matches()) {
+        if (!ValidationUtils.isValidEmail(cleanEmail)) {
             return Result.failure(IllegalArgumentException("Format email tidak valid (contoh: nama@domain.com)"))
         }
         if (cleanPass.length < 6) {
@@ -83,7 +84,7 @@ class MockAuthRepository : AuthRepository {
         phone: String,
         nik: String
     ): Result<User> {
-        delay(700)
+        delay(100)
         val cleanName = name.trim()
         val cleanEmail = email.trim()
         val cleanPass = password.trim()
@@ -92,7 +93,7 @@ class MockAuthRepository : AuthRepository {
 
         if (cleanName.isBlank()) return Result.failure(IllegalArgumentException("Nama lengkap wajib diisi"))
         if (cleanEmail.isBlank()) return Result.failure(IllegalArgumentException("Email wajib diisi"))
-        if (!android.util.Patterns.EMAIL_ADDRESS.matcher(cleanEmail).matches()) {
+        if (!ValidationUtils.isValidEmail(cleanEmail)) {
             return Result.failure(IllegalArgumentException("Format email tidak valid"))
         }
         if (cleanPhone.length < 10) return Result.failure(IllegalArgumentException("Nomor telepon minimal 10 digit"))
@@ -119,10 +120,10 @@ class MockAuthRepository : AuthRepository {
     }
 
     override suspend fun forgotPassword(email: String): Result<String> {
-        delay(600)
+        delay(100)
         val cleanEmail = email.trim()
         if (cleanEmail.isBlank()) return Result.failure(IllegalArgumentException("Email wajib diisi"))
-        if (!android.util.Patterns.EMAIL_ADDRESS.matcher(cleanEmail).matches()) {
+        if (!ValidationUtils.isValidEmail(cleanEmail)) {
             return Result.failure(IllegalArgumentException("Format email tidak valid"))
         }
         return Result.success("Link reset password telah dikirim ke $cleanEmail. Silakan periksa kotak masuk atau spam Anda.")

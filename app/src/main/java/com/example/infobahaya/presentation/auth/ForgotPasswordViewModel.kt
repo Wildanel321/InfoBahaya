@@ -3,6 +3,7 @@ package com.example.infobahaya.presentation.auth
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.example.infobahaya.core.di.ServiceLocator
+import com.example.infobahaya.core.util.ValidationUtils
 import com.example.infobahaya.domain.repository.AuthRepository
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.asStateFlow
@@ -37,7 +38,7 @@ class ForgotPasswordViewModel(
             _uiState.value = _uiState.value.copy(emailError = "Email wajib diisi")
             return
         }
-        if (!android.util.Patterns.EMAIL_ADDRESS.matcher(email).matches()) {
+        if (!ValidationUtils.isValidEmail(email)) {
             _uiState.value = _uiState.value.copy(emailError = "Format email tidak valid")
             return
         }

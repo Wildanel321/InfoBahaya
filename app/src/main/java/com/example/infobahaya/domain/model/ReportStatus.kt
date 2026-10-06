@@ -1,12 +1,12 @@
 package com.example.infobahaya.domain.model
 
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.filled.Send
 import androidx.compose.material.icons.filled.AssignmentTurnedIn
 import androidx.compose.material.icons.filled.Cancel
 import androidx.compose.material.icons.filled.CheckCircle
 import androidx.compose.material.icons.filled.HourglassTop
 import androidx.compose.material.icons.filled.PendingActions
-import androidx.compose.material.icons.filled.Send
 import androidx.compose.material.icons.filled.Sync
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
@@ -45,7 +45,7 @@ enum class ReportStatus(
         stepOrder = 1,
         displayName = "Dikirim",
         description = "Laporan berhasil terkirim dan tersimpan di sistem",
-        icon = Icons.Default.Send,
+        icon = Icons.AutoMirrored.Filled.Send,
         color = StatusSubmitted,
         containerColor = StatusSubmittedContainer,
         contentColor = StatusSubmittedText

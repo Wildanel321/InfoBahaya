@@ -3,6 +3,7 @@ package com.example.infobahaya.presentation.auth
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.example.infobahaya.core.di.ServiceLocator
+import com.example.infobahaya.core.util.ValidationUtils
 import com.example.infobahaya.domain.model.User
 import com.example.infobahaya.domain.repository.AuthRepository
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -82,7 +83,7 @@ class LoginViewModel(
         if (emailTrimmed.isBlank()) {
             emailErr = "Email wajib diisi"
             hasError = true
-        } else if (!android.util.Patterns.EMAIL_ADDRESS.matcher(emailTrimmed).matches()) {
+        } else if (!ValidationUtils.isValidEmail(emailTrimmed)) {
             emailErr = "Format email tidak valid"
             hasError = true
         }

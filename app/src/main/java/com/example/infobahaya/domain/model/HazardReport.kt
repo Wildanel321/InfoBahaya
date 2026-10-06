@@ -1,0 +1,32 @@
+package com.example.infobahaya.domain.model
+
+data class HazardReport(
+    val id: String,
+    val title: String,
+    val description: String,
+    val category: HazardCategory,
+    val severity: HazardSeverity,
+    val status: ReportStatus,
+    val latitude: Double,
+    val longitude: Double,
+    val address: String,
+    val landmark: String? = null,
+    val photoUrls: List<String> = emptyList(),
+    val videoUrl: String? = null,
+    val createdAt: String,
+    val updatedAt: String,
+    val userId: String,
+    val userName: String,
+    val userPhone: String? = null,
+    val verifiedBy: String? = null,
+    val moderatorNote: String? = null,
+    val assignedDepartment: String? = null,
+    val isPriority: Boolean = false,
+    val isSynced: Boolean = true,
+    val syncStatusText: String = "Tersinkronkan",
+    val upvotesCount: Int = 0,
+    val isUpvotedByCurrentUser: Boolean = false,
+    val resolutionNote: String? = null,
+    val resolutionPhotoUrl: String? = null,
+    val timeline: List<TimelineEvent> = emptyList()
+)

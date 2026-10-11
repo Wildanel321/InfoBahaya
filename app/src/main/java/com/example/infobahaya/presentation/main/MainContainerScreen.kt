@@ -137,7 +137,8 @@ fun MainContainerScreen(
                 BottomNavItem.HOME -> HomeScreen(
                     onNavigateToReportDetail = onNavigateToReportDetail,
                     onNavigateToCreateReport = onNavigateToCreateReport,
-                    onNavigateToEmergency = { selectedTab = BottomNavItem.EMERGENCY }
+                    onNavigateToEmergency = { selectedTab = BottomNavItem.EMERGENCY },
+                    onNavigateToModeratorDashboard = onNavigateToModeratorDashboard
                 )
                 BottomNavItem.TRACKING -> ReportHistoryScreen(
                     onNavigateToDetail = onNavigateToReportDetail,

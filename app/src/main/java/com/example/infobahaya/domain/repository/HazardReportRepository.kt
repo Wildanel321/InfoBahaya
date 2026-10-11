@@ -26,7 +26,8 @@ interface HazardReportRepository {
         reportId: String,
         newStatus: ReportStatus,
         moderatorNote: String,
-        assignedDepartment: String? = null
+        assignedDepartment: String? = null,
+        newSeverity: HazardSeverity? = null
     ): Result<HazardReport>
     suspend fun syncPendingReports(): Result<Int>
     fun getOfflinePendingCount(): Flow<Int>

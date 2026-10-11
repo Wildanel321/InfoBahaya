@@ -232,60 +232,77 @@ fun ProfileScreen(
 
             Spacer(modifier = Modifier.height(14.dp))
 
-            // Special Moderator Entrance Banner if User is Moderator
-            if (user?.role == UserRole.MODERATOR) {
-                Card(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .clip(InfoBahayaThemeTokens.shapes.card)
-                        .clickable { onNavigateToModeratorDashboard() },
-                    shape = InfoBahayaThemeTokens.shapes.card,
-                    colors = CardDefaults.cardColors(containerColor = Color(0xFFF3E8FF))
+            // Special Admin / Moderator Entrance Banner
+            Card(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .clip(InfoBahayaThemeTokens.shapes.card)
+                    .clickable { onNavigateToModeratorDashboard() },
+                shape = InfoBahayaThemeTokens.shapes.card,
+                colors = CardDefaults.cardColors(
+                    containerColor = if (user?.role == UserRole.MODERATOR) Color(0xFFF3E8FF) else Color(0xFFEFF6FF)
+                )
+            ) {
+                Row(
+                    modifier = Modifier.padding(14.dp),
+                    verticalAlignment = Alignment.CenterVertically
                 ) {
-                    Row(
-                        modifier = Modifier.padding(14.dp),
-                        verticalAlignment = Alignment.CenterVertically
+                    Box(
+                        modifier = Modifier
+                            .size(42.dp)
+                            .clip(RoundedCornerShape(10.dp))
+                            .background(if (user?.role == UserRole.MODERATOR) Color(0xFF8B5CF6) else PrimaryBlue),
+                        contentAlignment = Alignment.Center
                     ) {
-                        Box(
-                            modifier = Modifier
-                                .size(40.dp)
-                                .clip(RoundedCornerShape(10.dp))
-                                .background(Color(0xFF8B5CF6)),
-                            contentAlignment = Alignment.Center
-                        ) {
-                            Icon(
-                                imageVector = Icons.Default.AdminPanelSettings,
-                                contentDescription = null,
-                                tint = Color.White,
-                                modifier = Modifier.size(24.dp)
-                            )
-                        }
-
-                        Spacer(modifier = Modifier.width(12.dp))
-
-                        Column(modifier = Modifier.weight(1f)) {
-                            Text(
-                                text = "Buka Dashboard Moderator",
-                                style = MaterialTheme.typography.titleSmall.copy(fontWeight = FontWeight.Bold),
-                                color = Color(0xFF581C87)
-                            )
-                            Text(
-                                text = "Verifikasi antrian laporan masuk dan statistik dinas",
-                                style = MaterialTheme.typography.bodySmall,
-                                color = Color(0xFF7E22CE)
-                            )
-                        }
-
                         Icon(
-                            imageVector = Icons.Default.ChevronRight,
+                            imageVector = Icons.Default.AdminPanelSettings,
                             contentDescription = null,
-                            tint = Color(0xFF8B5CF6)
+                            tint = Color.White,
+                            modifier = Modifier.size(24.dp)
                         )
                     }
-                }
 
-                Spacer(modifier = Modifier.height(14.dp))
+                    Spacer(modifier = Modifier.width(12.dp))
+
+                    Column(modifier = Modifier.weight(1f)) {
+                        Row(verticalAlignment = Alignment.CenterVertically) {
+                            Text(
+                                text = "Dashboard Admin & Validasi",
+                                style = MaterialTheme.typography.titleSmall.copy(fontWeight = FontWeight.Bold),
+                                color = if (user?.role == UserRole.MODERATOR) Color(0xFF581C87) else PrimaryBlue
+                            )
+                            if (user?.role == UserRole.MODERATOR) {
+                                Spacer(modifier = Modifier.width(6.dp))
+                                Box(
+                                    modifier = Modifier
+                                        .clip(RoundedCornerShape(4.dp))
+                                        .background(Color(0xFF8B5CF6))
+                                        .padding(horizontal = 4.dp, vertical = 1.dp)
+                                ) {
+                                    Text(
+                                        text = "PETUGAS",
+                                        style = MaterialTheme.typography.labelSmall.copy(fontSize = androidx.compose.ui.unit.TextUnit(9f, androidx.compose.ui.unit.TextUnitType.Sp), fontWeight = FontWeight.Bold),
+                                        color = Color.White
+                                    )
+                                }
+                            }
+                        }
+                        Text(
+                            text = "Kelola antrian validasi, disposisi instansi, & analitik bahaya",
+                            style = MaterialTheme.typography.bodySmall,
+                            color = if (user?.role == UserRole.MODERATOR) Color(0xFF7E22CE) else MaterialTheme.colorScheme.onSurfaceVariant
+                        )
+                    }
+
+                    Icon(
+                        imageVector = Icons.Default.ChevronRight,
+                        contentDescription = null,
+                        tint = if (user?.role == UserRole.MODERATOR) Color(0xFF8B5CF6) else PrimaryBlue
+                    )
+                }
             }
+
+            Spacer(modifier = Modifier.height(14.dp))
 
             // Quick Role Switcher Button for Demo / Testing
             Card(

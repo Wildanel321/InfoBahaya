@@ -13,11 +13,13 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Close
+import androidx.compose.material.icons.filled.Warning
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.Icon
@@ -39,6 +41,7 @@ import androidx.compose.ui.window.Dialog
 import com.example.infobahaya.core.theme.InfoBahayaThemeTokens
 import com.example.infobahaya.core.theme.PrimaryBlue
 import com.example.infobahaya.domain.model.HazardReport
+import com.example.infobahaya.domain.model.HazardSeverity
 import com.example.infobahaya.domain.model.ReportStatus
 import com.example.infobahaya.presentation.components.InfoBahayaButton
 import com.example.infobahaya.presentation.components.InfoBahayaOutlinedButton
@@ -48,14 +51,15 @@ import com.example.infobahaya.presentation.components.InfoBahayaTextField
 @Composable
 fun ModerationActionDialog(
     report: HazardReport,
-    onConfirm: (ReportStatus, String, String?) -> Unit,
+    onConfirm: (ReportStatus, String, String?, HazardSeverity?) -> Unit,
     onDismiss: () -> Unit
 ) {
     var selectedStatus by remember { mutableStateOf(ReportStatus.DIVERIFIKASI) }
+    var selectedSeverity by remember { mutableStateOf(report.severity) }
     var note by remember { mutableStateOf("Laporan telah diverifikasi dan siap ditindaklanjuti.") }
     var selectedDept by remember {
         mutableStateOf(
-            when (report.category.name) {
+            report.assignedDepartment ?: when (report.category.name) {
                 "LISTRIK_KABEL" -> "PLN UID Jakarta Raya (Tim Yantek)"
                 "POHON_TUMBANG" -> "Dinas Pertamanan dan Hutan Kota DKI"
                 "BANJIR" -> "Dinas Sumber Daya Air & BPBD DKI"
@@ -76,11 +80,19 @@ fun ModerationActionDialog(
         "Polres Metro / Polsek Setempat"
     )
 
+    val quickTemplates = listOf(
+        "Laporan valid & prioritas penanganan" to ReportStatus.DIVERIFIKASI,
+        "Tim lapangan sedang meluncur ke TKP" to ReportStatus.DIPROSES,
+        "Diteruskan ke instansi berwenang" to ReportStatus.DITERUSKAN,
+        "Penanganan tuntas & situasi aman" to ReportStatus.SELESAI,
+        "Ditolak: Informasi tidak akurat / duplikat" to ReportStatus.DITOLAK
+    )
+
     Dialog(onDismissRequest = onDismiss) {
         Card(
             modifier = Modifier
                 .fillMaxWidth()
-                .padding(8.dp),
+                .padding(4.dp),
             shape = RoundedCornerShape(24.dp),
             colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface)
         ) {
@@ -95,14 +107,15 @@ fun ModerationActionDialog(
                     horizontalArrangement = Arrangement.SpaceBetween,
                     verticalAlignment = Alignment.CenterVertically
                 ) {
-                    Column {
+                    Column(modifier = Modifier.weight(1f)) {
                         Text(
-                            text = "Moderasi Laporan",
+                            text = "Validasi & Keputusan Laporan",
                             style = MaterialTheme.typography.titleLarge.copy(fontWeight = FontWeight.Bold),
                             color = MaterialTheme.colorScheme.onSurface
                         )
+                        Spacer(modifier = Modifier.height(2.dp))
                         Text(
-                            text = report.id,
+                            text = "${report.id} • ${report.userName}",
                             style = MaterialTheme.typography.labelSmall.copy(fontWeight = FontWeight.Bold),
                             color = PrimaryBlue
                         )
@@ -113,11 +126,28 @@ fun ModerationActionDialog(
                     }
                 }
 
-                Spacer(modifier = Modifier.height(16.dp))
+                Spacer(modifier = Modifier.height(14.dp))
 
-                // Action / New Status Selector
+                // Short summary box
+                Box(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .clip(InfoBahayaThemeTokens.shapes.small)
+                        .background(MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f))
+                        .padding(10.dp)
+                ) {
+                    Text(
+                        text = "\"${report.title}\"",
+                        style = MaterialTheme.typography.bodySmall.copy(fontWeight = FontWeight.Medium),
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
+                }
+
+                Spacer(modifier = Modifier.height(14.dp))
+
+                // 1. Action / New Status Selector
                 Text(
-                    text = "Pilih Keputusan Status Baru",
+                    text = "1. Tetapkan Status Validasi",
                     style = MaterialTheme.typography.labelLarge.copy(fontWeight = FontWeight.Bold),
                     color = MaterialTheme.colorScheme.onSurface
                 )
@@ -167,9 +197,43 @@ fun ModerationActionDialog(
 
                 Spacer(modifier = Modifier.height(16.dp))
 
-                // Assign Department
+                // 2. Adjust Severity Level
                 Text(
-                    text = "Disposisi / Instansi Penanggung Jawab",
+                    text = "2. Sesuaikan Tingkat Keparahan",
+                    style = MaterialTheme.typography.labelLarge.copy(fontWeight = FontWeight.Bold),
+                    color = MaterialTheme.colorScheme.onSurface
+                )
+
+                Spacer(modifier = Modifier.height(8.dp))
+
+                FlowRow(
+                    horizontalArrangement = Arrangement.spacedBy(6.dp),
+                    verticalArrangement = Arrangement.spacedBy(6.dp)
+                ) {
+                    HazardSeverity.entries.forEach { sev ->
+                        val isSelected = selectedSeverity == sev
+                        Box(
+                            modifier = Modifier
+                                .clip(InfoBahayaThemeTokens.shapes.badge)
+                                .background(if (isSelected) sev.color else sev.containerColor)
+                                .clickable { selectedSeverity = sev }
+                                .padding(horizontal = 8.dp, vertical = 5.dp),
+                            contentAlignment = Alignment.Center
+                        ) {
+                            Text(
+                                text = sev.displayName,
+                                style = MaterialTheme.typography.labelSmall.copy(fontWeight = FontWeight.SemiBold),
+                                color = if (isSelected) Color.White else sev.contentColor
+                            )
+                        }
+                    }
+                }
+
+                Spacer(modifier = Modifier.height(16.dp))
+
+                // 3. Assign Department
+                Text(
+                    text = "3. Disposisi Instansi Penanggung Jawab",
                     style = MaterialTheme.typography.labelLarge.copy(fontWeight = FontWeight.Bold),
                     color = MaterialTheme.colorScheme.onSurface
                 )
@@ -206,14 +270,49 @@ fun ModerationActionDialog(
 
                 Spacer(modifier = Modifier.height(14.dp))
 
-                // Moderator Note Input
+                // 4. Quick Template Buttons
+                Text(
+                    text = "Templat Catatan Cepat",
+                    style = MaterialTheme.typography.labelSmall.copy(fontWeight = FontWeight.Bold),
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                )
+
+                Spacer(modifier = Modifier.height(6.dp))
+
+                FlowRow(
+                    horizontalArrangement = Arrangement.spacedBy(6.dp),
+                    verticalArrangement = Arrangement.spacedBy(6.dp)
+                ) {
+                    quickTemplates.forEach { (tmpl, targetStatus) ->
+                        Box(
+                            modifier = Modifier
+                                .clip(InfoBahayaThemeTokens.shapes.badge)
+                                .background(MaterialTheme.colorScheme.surfaceVariant)
+                                .clickable {
+                                    note = tmpl
+                                    selectedStatus = targetStatus
+                                }
+                                .padding(horizontal = 8.dp, vertical = 4.dp)
+                        ) {
+                            Text(
+                                text = tmpl,
+                                style = MaterialTheme.typography.labelSmall,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant
+                            )
+                        }
+                    }
+                }
+
+                Spacer(modifier = Modifier.height(10.dp))
+
+                // 5. Moderator Note Input
                 InfoBahayaTextField(
                     value = note,
                     onValueChange = { note = it },
-                    label = "Catatan Resmi Petugas / Alasan",
+                    label = "Catatan Resmi Petugas",
                     singleLine = false,
-                    minLines = 3,
-                    maxLines = 5
+                    minLines = 2,
+                    maxLines = 4
                 )
 
                 Spacer(modifier = Modifier.height(20.dp))
@@ -230,7 +329,7 @@ fun ModerationActionDialog(
                     )
                     InfoBahayaButton(
                         text = "Simpan Keputusan",
-                        onClick = { onConfirm(selectedStatus, note, selectedDept) },
+                        onClick = { onConfirm(selectedStatus, note, selectedDept, selectedSeverity) },
                         modifier = Modifier.weight(1.5f)
                     )
                 }

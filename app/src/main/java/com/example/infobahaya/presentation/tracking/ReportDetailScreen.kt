@@ -20,8 +20,10 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.automirrored.filled.Comment
 import androidx.compose.material.icons.filled.AccountCircle
+import androidx.compose.material.icons.filled.AdminPanelSettings
 import androidx.compose.material.icons.filled.Apartment
 import androidx.compose.material.icons.filled.CheckCircle
+import androidx.compose.material.icons.filled.Edit
 import androidx.compose.material.icons.filled.LocationOn
 import androidx.compose.material.icons.filled.Phone
 import androidx.compose.material.icons.filled.PhotoCamera
@@ -35,6 +37,8 @@ import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
+import androidx.compose.material3.SnackbarHost
+import androidx.compose.material3.SnackbarHostState
 import androidx.compose.material3.Text
 import androidx.compose.material3.TopAppBar
 import androidx.compose.material3.TopAppBarDefaults
@@ -42,6 +46,7 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -59,6 +64,7 @@ import com.example.infobahaya.presentation.components.InfoBahayaOutlinedButton
 import com.example.infobahaya.presentation.components.LoadingState
 import com.example.infobahaya.presentation.components.SeverityBadge
 import com.example.infobahaya.presentation.components.StatusBadge
+import com.example.infobahaya.presentation.moderator.components.ModerationActionDialog
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -69,9 +75,17 @@ fun ReportDetailScreen(
     viewModel: ReportDetailViewModel = viewModel()
 ) {
     val uiState by viewModel.uiState.collectAsState()
+    val snackbarHostState = remember { SnackbarHostState() }
 
     LaunchedEffect(reportId) {
         viewModel.loadReport(reportId)
+    }
+
+    LaunchedEffect(uiState.feedbackMessage) {
+        uiState.feedbackMessage?.let { msg ->
+            snackbarHostState.showSnackbar(msg)
+            viewModel.dismissFeedback()
+        }
     }
 
     Scaffold(
@@ -84,6 +98,11 @@ fun ReportDetailScreen(
                     }
                 },
                 actions = {
+                    if (uiState.isUserModerator) {
+                        IconButton(onClick = { viewModel.openActionDialog() }) {
+                            Icon(imageVector = Icons.Default.Edit, contentDescription = "Validasi / Ubah Status", tint = PrimaryBlue)
+                        }
+                    }
                     IconButton(onClick = { /* Share intent */ }) {
                         Icon(imageVector = Icons.Default.Share, contentDescription = "Bagikan Laporan")
                     }
@@ -93,6 +112,7 @@ fun ReportDetailScreen(
                 )
             )
         },
+        snackbarHost = { SnackbarHost(hostState = snackbarHostState) },
         containerColor = MaterialTheme.colorScheme.background
     ) { paddingValues ->
         if (uiState.isLoading) {

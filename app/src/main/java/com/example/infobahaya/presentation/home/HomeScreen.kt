@@ -21,6 +21,8 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.CloudOff
+import androidx.compose.material.icons.filled.AdminPanelSettings
+import androidx.compose.material.icons.filled.ChevronRight
 import androidx.compose.material.icons.filled.Layers
 import androidx.compose.material.icons.filled.MyLocation
 import androidx.compose.material.icons.filled.Warning
@@ -55,6 +57,7 @@ fun HomeScreen(
     onNavigateToReportDetail: (String) -> Unit,
     onNavigateToCreateReport: () -> Unit,
     onNavigateToEmergency: () -> Unit,
+    onNavigateToModeratorDashboard: () -> Unit = {},
     viewModel: HomeMapViewModel = viewModel()
 ) {
     val uiState by viewModel.uiState.collectAsState()
@@ -120,6 +123,51 @@ fun HomeScreen(
                     selectedCategory = uiState.selectedCategory,
                     onSelectCategory = { viewModel.onSelectCategory(it) }
                 )
+
+                // Moderator / Admin Quick Access Banner if user is Moderator
+                AnimatedVisibility(
+                    visible = uiState.isUserModerator,
+                    enter = fadeIn(),
+                    exit = fadeOut()
+                ) {
+                    Box(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(horizontal = 16.dp, vertical = 4.dp)
+                            .clip(RoundedCornerShape(12.dp))
+                            .background(Color(0xFF8B5CF6))
+                            .clickable { onNavigateToModeratorDashboard() }
+                            .padding(horizontal = 14.dp, vertical = 8.dp)
+                    ) {
+                        Row(verticalAlignment = Alignment.CenterVertically) {
+                            Icon(
+                                imageVector = Icons.Default.AdminPanelSettings,
+                                contentDescription = null,
+                                tint = Color.White,
+                                modifier = Modifier.size(20.dp)
+                            )
+                            Spacer(modifier = Modifier.width(10.dp))
+                            Column(modifier = Modifier.weight(1f)) {
+                                Text(
+                                    text = "Mode Admin / Petugas Aktif",
+                                    style = MaterialTheme.typography.labelMedium.copy(fontWeight = FontWeight.Bold),
+                                    color = Color.White
+                                )
+                                Text(
+                                    text = "Buka Dashboard Validasi Laporan",
+                                    style = MaterialTheme.typography.bodySmall,
+                                    color = Color.White.copy(alpha = 0.9f)
+                                )
+                            }
+                            Icon(
+                                imageVector = Icons.Default.ChevronRight,
+                                contentDescription = null,
+                                tint = Color.White,
+                                modifier = Modifier.size(20.dp)
+                            )
+                        }
+                    }
+                }
 
                 // Active Emergency Banner (if any)
                 AnimatedVisibility(

@@ -7,6 +7,9 @@ import com.example.infobahaya.domain.model.HazardSeverity
 import com.example.infobahaya.domain.model.ReportStatus
 import com.example.infobahaya.domain.model.TimelineEvent
 import com.example.infobahaya.domain.repository.HazardReportRepository
+import com.example.infobahaya.core.di.ServiceLocator
+import com.example.infobahaya.domain.model.NotificationCategory
+import com.example.infobahaya.domain.model.NotificationItem
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -422,9 +425,10 @@ class MockHazardReportRepository : HazardReportRepository {
         reportId: String,
         newStatus: ReportStatus,
         moderatorNote: String,
-        assignedDepartment: String?
+        assignedDepartment: String?,
+        newSeverity: HazardSeverity?
     ): Result<HazardReport> {
-        delay(400)
+        delay(300)
         val list = _reports.value.toMutableList()
         val index = list.indexOfFirst { it.id == reportId }
         if (index == -1) return Result.failure(NoSuchElementException("Laporan tidak ditemukan"))
@@ -449,6 +453,7 @@ class MockHazardReportRepository : HazardReportRepository {
 
         val updated = current.copy(
             status = newStatus,
+            severity = newSeverity ?: current.severity,
             updatedAt = now,
             moderatorNote = moderatorNote.ifBlank { current.moderatorNote },
             assignedDepartment = assignedDepartment ?: current.assignedDepartment,
@@ -457,6 +462,26 @@ class MockHazardReportRepository : HazardReportRepository {
 
         list[index] = updated
         _reports.value = list
+
+        // Otomatis kirim notifikasi hasil validasi laporan ke warga pelapor
+        try {
+            val notificationRepo = ServiceLocator.provideNotificationRepository()
+            notificationRepo.addNotification(
+                NotificationItem(
+                    id = "notif_mod_${System.currentTimeMillis()}",
+                    title = "Validasi Laporan: ${current.id}",
+                    message = "Laporan '${current.title}' kini berstatus '${newStatus.displayName}'. ${moderatorNote.take(70)}",
+                    category = if (newStatus == ReportStatus.DIVERIFIKASI || newStatus == ReportStatus.DITERUSKAN) 
+                        NotificationCategory.VERIFICATION 
+                    else 
+                        NotificationCategory.REPORT_UPDATE,
+                    timestamp = "Baru saja",
+                    isRead = false,
+                    reportId = current.id
+                )
+            )
+        } catch (_: Exception) {}
+
         return Result.success(updated)
     }
 

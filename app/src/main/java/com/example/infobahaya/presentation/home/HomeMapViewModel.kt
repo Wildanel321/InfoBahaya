@@ -9,6 +9,7 @@ import com.example.infobahaya.domain.model.HazardSeverity
 import com.example.infobahaya.domain.model.ReportStatus
 import com.example.infobahaya.domain.repository.AuthRepository
 import com.example.infobahaya.domain.repository.HazardReportRepository
+import com.example.infobahaya.domain.model.UserRole
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.combine
@@ -31,7 +32,8 @@ data class HomeMapUiState(
     val isLoading: Boolean = false,
     val offlinePendingCount: Int = 0,
     val isOffline: Boolean = false,
-    val activeEmergenciesCount: Int = 0
+    val activeEmergenciesCount: Int = 0,
+    val isUserModerator: Boolean = false
 )
 
 enum class MapLayerType(val label: String) {
@@ -51,6 +53,17 @@ class HomeMapViewModel(
     init {
         observeReports()
         observeOfflineState()
+        observeUserRole()
+    }
+
+    private fun observeUserRole() {
+        viewModelScope.launch {
+            authRepository.getCurrentUser().collect { user ->
+                _uiState.value = _uiState.value.copy(
+                    isUserModerator = user?.role == UserRole.MODERATOR
+                )
+            }
+        }
     }
 
     private fun observeReports() {

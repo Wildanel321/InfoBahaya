@@ -1,6 +1,7 @@
 package com.example.infobahaya.presentation.tracking
 
 import androidx.compose.foundation.background
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -178,8 +179,48 @@ fun ReportDetailScreen(
                     )
                 }
 
+                // If Moderator / Admin, show prominent action button
+                if (uiState.isUserModerator) {
+                    Spacer(modifier = Modifier.height(12.dp))
+                    Box(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .clip(InfoBahayaThemeTokens.shapes.button)
+                            .background(Color(0xFF8B5CF6))
+                            .clickable { viewModel.openActionDialog() }
+                            .padding(vertical = 12.dp),
+                        contentAlignment = Alignment.Center
+                    ) {
+                        Row(verticalAlignment = Alignment.CenterVertically) {
+                            Icon(
+                                imageVector = Icons.Default.AdminPanelSettings,
+                                contentDescription = null,
+                                tint = Color.White,
+                                modifier = Modifier.size(18.dp)
+                            )
+                            Spacer(modifier = Modifier.width(8.dp))
+                            Text(
+                                text = "Validasi & Disposisi Petugas",
+                                style = MaterialTheme.typography.labelLarge.copy(fontWeight = FontWeight.Bold),
+                                color = Color.White
+                            )
+                        }
+                    }
+                }
+
                 Spacer(modifier = Modifier.height(24.dp))
             }
+        }
+
+        // Moderation Decision Dialog for Admin
+        if (uiState.isActionDialogVisible && uiState.report != null) {
+            ModerationActionDialog(
+                report = uiState.report!!,
+                onConfirm = { newStatus, note, dept, newSeverity ->
+                    viewModel.submitModerationDecision(newStatus, note, dept, newSeverity)
+                },
+                onDismiss = { viewModel.closeActionDialog() }
+            )
         }
     }
 }

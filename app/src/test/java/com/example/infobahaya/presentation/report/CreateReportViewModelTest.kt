@@ -6,6 +6,7 @@ import com.example.infobahaya.domain.model.HazardCategory
 import com.example.infobahaya.domain.model.HazardSeverity
 import com.example.infobahaya.testutils.MainDispatcherRule
 import kotlinx.coroutines.ExperimentalCoroutinesApi
+import kotlinx.coroutines.test.advanceUntilIdle
 import kotlinx.coroutines.test.runTest
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertNotNull
@@ -71,6 +72,7 @@ class CreateReportViewModelTest {
 
         // Step 6: Review & Submit -> Step 7: Success
         viewModel.nextStep()
+        advanceUntilIdle()
         val state = viewModel.uiState.value
         assertEquals(7, state.currentStep)
         assertTrue(state.isSubmitted)

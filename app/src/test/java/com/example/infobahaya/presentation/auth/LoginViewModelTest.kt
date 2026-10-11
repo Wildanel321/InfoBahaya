@@ -4,6 +4,7 @@ import com.example.infobahaya.data.repository.MockAuthRepository
 import com.example.infobahaya.domain.model.UserRole
 import com.example.infobahaya.testutils.MainDispatcherRule
 import kotlinx.coroutines.ExperimentalCoroutinesApi
+import kotlinx.coroutines.test.advanceUntilIdle
 import kotlinx.coroutines.test.runTest
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertNotNull
@@ -63,6 +64,7 @@ class LoginViewModelTest {
         viewModel.onEmailChange("rian.pratama@gmail.com")
         viewModel.onPasswordChange("password123")
         viewModel.login()
+        advanceUntilIdle()
 
         val state = viewModel.uiState.value
         assertTrue(state.isSuccess)

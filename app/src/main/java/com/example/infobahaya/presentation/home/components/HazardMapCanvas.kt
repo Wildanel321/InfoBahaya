@@ -1,43 +1,41 @@
 package com.example.infobahaya.presentation.home.components
 
-import androidx.compose.animation.core.FastOutSlowInEasing
-import androidx.compose.animation.core.RepeatMode
-import androidx.compose.animation.core.animateFloat
-import androidx.compose.animation.core.infiniteRepeatable
-import androidx.compose.animation.core.rememberInfiniteTransition
-import androidx.compose.animation.core.tween
-import androidx.compose.foundation.Canvas
-import androidx.compose.foundation.background
-import androidx.compose.foundation.gestures.detectTapGestures
-import androidx.compose.foundation.gestures.detectTransformGestures
+import android.annotation.SuppressLint
+import android.webkit.JavascriptInterface
+import android.webkit.WebView
+import android.webkit.WebViewClient
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableFloatStateOf
-import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.DisposableEffect
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.remember
-import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.geometry.Offset
-import androidx.compose.ui.geometry.Size
-import androidx.compose.ui.graphics.Brush
-import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.graphics.Path
-import androidx.compose.ui.graphics.drawscope.DrawScope
-import androidx.compose.ui.graphics.drawscope.Fill
-import androidx.compose.ui.graphics.drawscope.Stroke
-import androidx.compose.ui.input.pointer.pointerInput
-import com.example.infobahaya.core.theme.PrimaryBlue
-import com.example.infobahaya.core.theme.SafetyNavy800
-import com.example.infobahaya.core.theme.SafetyNavy900
-import com.example.infobahaya.core.theme.SeverityEmergency
+import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.viewinterop.AndroidView
 import com.example.infobahaya.domain.model.HazardReport
 import com.example.infobahaya.domain.model.HazardSeverity
 import com.example.infobahaya.presentation.home.MapLayerType
-import kotlin.math.abs
-import kotlin.math.hypot
+import org.json.JSONArray
+import org.json.JSONObject
 
+class MapBridge(
+    private val onSelectReport: (HazardReport?) -> Unit,
+    private val reportsProvider: () -> List<HazardReport>
+) {
+    @JavascriptInterface
+    fun onMarkerClicked(reportId: String) {
+        val report = reportsProvider().find { it.id == reportId }
+        onSelectReport(report)
+    }
+
+    @JavascriptInterface
+    fun onMapClicked() {
+        onSelectReport(null)
+    }
+}
+
+@SuppressLint("SetJavaScriptEnabled")
 @Composable
 fun HazardMapCanvas(
     reports: List<HazardReport>,
@@ -48,270 +46,263 @@ fun HazardMapCanvas(
     layerType: MapLayerType,
     modifier: Modifier = Modifier
 ) {
-    var scale by remember { mutableFloatStateOf(1.0f) }
-    var offsetX by remember { mutableFloatStateOf(0f) }
-    var offsetY by remember { mutableFloatStateOf(0f) }
+    val context = LocalContext.current
 
-    // Pulse animation for active emergency markers and user GPS
-    val infiniteTransition = rememberInfiniteTransition(label = "pulse_map")
-    val pulseRadius by infiniteTransition.animateFloat(
-        initialValue = 16f,
-        targetValue = 38f,
-        animationSpec = infiniteRepeatable(
-            animation = tween(1200, easing = FastOutSlowInEasing),
-            repeatMode = RepeatMode.Restart
-        ),
-        label = "pulseRadius"
-    )
-    val pulseAlpha by infiniteTransition.animateFloat(
-        initialValue = 0.8f,
-        targetValue = 0.0f,
-        animationSpec = infiniteRepeatable(
-            animation = tween(1200, easing = FastOutSlowInEasing),
-            repeatMode = RepeatMode.Restart
-        ),
-        label = "pulseAlpha"
-    )
+    val bridge = remember(onSelectReport) {
+        MapBridge(onSelectReport) { reports }
+    }
 
-    // Center reference coordinate: Jakarta (-6.21, 106.83)
-    val centerLat = -6.2100
-    val centerLng = 106.8300
-    val coordScale = 1400.0 // Pixels per degree
+    val webView = remember {
+        WebView(context).apply {
+            settings.javaScriptEnabled = true
+            settings.domStorageEnabled = true
+            settings.databaseEnabled = true
+            settings.loadWithOverviewMode = true
+            settings.useWideViewPort = true
+            webViewClient = WebViewClient()
+            addJavascriptInterface(bridge, "AndroidBridge")
 
-    Box(
-        modifier = modifier
-            .fillMaxSize()
-            .pointerInput(Unit) {
-                detectTransformGestures { _, pan, zoom, _ ->
-                    scale = (scale * zoom).coerceIn(0.6f, 3.5f)
-                    offsetX += pan.x
-                    offsetY += pan.y
-                }
-            }
-            .pointerInput(reports, scale, offsetX, offsetY) {
-                detectTapGestures { tapOffset ->
-                    // Find tapped marker by hit testing in screen coordinates
-                    val boundsCenterX = size.width / 2f + offsetX
-                    val boundsCenterY = size.height / 2f + offsetY
-
-                    var closest: HazardReport? = null
-                    var minDist = Float.MAX_VALUE
-                    val touchThreshold = 44f * scale.coerceAtLeast(1f)
-
-                    for (report in reports) {
-                        val screenX = boundsCenterX + ((report.longitude - centerLng) * coordScale * scale).toFloat()
-                        val screenY = boundsCenterY + ((centerLat - report.latitude) * coordScale * scale).toFloat()
-                        val dist = hypot(tapOffset.x - screenX, tapOffset.y - screenY)
-
-                        if (dist < touchThreshold && dist < minDist) {
-                            minDist = dist
-                            closest = report
-                        }
-                    }
-
-                    onSelectReport(closest)
-                }
-            }
-    ) {
-        Canvas(modifier = Modifier.fillMaxSize()) {
-            val width = size.width
-            val height = size.height
-            val centerX = width / 2f + offsetX
-            val centerY = height / 2f + offsetY
-
-            // 1. Draw Map Base according to Layer Type
-            when (layerType) {
-                MapLayerType.STANDARD -> {
-                    drawRect(Color(0xFFE2E8F0)) // Light slate city base
-                    drawMapRoadNetwork(centerX, centerY, scale, isDark = false)
-                }
-                MapLayerType.SATELLITE -> {
-                    drawRect(SafetyNavy900) // Deep dark satellite tile
-                    drawMapRoadNetwork(centerX, centerY, scale, isDark = true)
-                }
-                MapLayerType.HEATMAP -> {
-                    drawRect(Color(0xFF0F172A))
-                    drawMapRoadNetwork(centerX, centerY, scale, isDark = true)
-                    // Draw Heatmap Risk Blobs around reports
-                    reports.forEach { r ->
-                        val screenX = centerX + ((r.longitude - centerLng) * coordScale * scale).toFloat()
-                        val screenY = centerY + ((centerLat - r.latitude) * coordScale * scale).toFloat()
-                        val heatColor = when (r.severity) {
-                            HazardSeverity.DARURAT -> Color(0xFFEF4444)
-                            HazardSeverity.TINGGI -> Color(0xFFF97316)
-                            HazardSeverity.SEDANG -> Color(0xFFF59E0B)
-                            HazardSeverity.RENDAH -> Color(0xFF10B981)
-                        }
-                        drawCircle(
-                            brush = Brush.radialGradient(
-                                colors = listOf(heatColor.copy(alpha = 0.45f), Color.Transparent),
-                                center = Offset(screenX, screenY),
-                                radius = 90f * scale
-                            ),
-                            radius = 90f * scale,
-                            center = Offset(screenX, screenY)
-                        )
-                    }
-                }
-            }
-
-            // 2. Draw User Location GPS Beacon
-            val userScreenX = centerX + ((userLongitude - centerLng) * coordScale * scale).toFloat()
-            val userScreenY = centerY + ((centerLat - userLatitude) * coordScale * scale).toFloat()
-
-            // User pulse
-            drawCircle(
-                color = PrimaryBlue.copy(alpha = pulseAlpha),
-                radius = pulseRadius * scale.coerceIn(0.8f, 1.4f),
-                center = Offset(userScreenX, userScreenY)
+            val htmlData = generateLeafletHtml(
+                reports = reports,
+                selectedReportId = selectedReport?.id,
+                userLat = userLatitude,
+                userLng = userLongitude,
+                layerType = layerType
             )
-            // Outer white ring
-            drawCircle(
-                color = Color.White,
-                radius = 11f * scale.coerceIn(0.8f, 1.3f),
-                center = Offset(userScreenX, userScreenY)
-            )
-            // Inner blue dot
-            drawCircle(
-                color = PrimaryBlue,
-                radius = 7.5f * scale.coerceIn(0.8f, 1.3f),
-                center = Offset(userScreenX, userScreenY)
-            )
-
-            // 3. Draw Hazard Markers
-            reports.forEach { report ->
-                val screenX = centerX + ((report.longitude - centerLng) * coordScale * scale).toFloat()
-                val screenY = centerY + ((centerLat - report.latitude) * coordScale * scale).toFloat()
-
-                // Skip drawing if outside viewport with buffer
-                if (screenX < -60 || screenX > width + 60 || screenY < -60 || screenY > height + 60) {
-                    return@forEach
-                }
-
-                val isSelected = selectedReport?.id == report.id
-                val isEmergency = report.severity == HazardSeverity.DARURAT
-
-                // Emergency Ripple Animation
-                if (isEmergency) {
-                    drawCircle(
-                        color = SeverityEmergency.copy(alpha = pulseAlpha * 0.7f),
-                        radius = (pulseRadius + 10f) * scale.coerceIn(0.8f, 1.3f),
-                        center = Offset(screenX, screenY)
-                    )
-                }
-
-                // Selected Target Highlight Ring
-                if (isSelected) {
-                    drawCircle(
-                        color = PrimaryBlue.copy(alpha = 0.35f),
-                        radius = 28f * scale.coerceIn(0.8f, 1.3f),
-                        center = Offset(screenX, screenY)
-                    )
-                    drawCircle(
-                        color = PrimaryBlue,
-                        radius = 22f * scale.coerceIn(0.8f, 1.3f),
-                        center = Offset(screenX, screenY),
-                        style = Stroke(width = 8f)
-                    )
-                }
-
-                // Draw Custom Pin Marker
-                drawHazardPin(
-                    center = Offset(screenX, screenY),
-                    severity = report.severity,
-                    isSelected = isSelected,
-                    scale = scale
-                )
-            }
+            loadDataWithBaseURL("https://leafletjs.com", htmlData, "text/html", "UTF-8", null)
         }
     }
-}
 
-private fun DrawScope.drawMapRoadNetwork(centerX: Float, centerY: Float, scale: Float, isDark: Boolean) {
-    val roadColor = if (isDark) Color(0xFF1E293B) else Color(0xFFCBD5E1)
-    val arterialColor = if (isDark) Color(0xFF334155) else Color(0xFF94A3B8)
-    val riverColor = if (isDark) Color(0xFF0C4A6E) else Color(0xFFBAE6FD)
-
-    // River Line (Ciliwung corridor simulation)
-    val riverPath = Path().apply {
-        moveTo(centerX - 350f * scale, centerY - 600f * scale)
-        cubicTo(
-            centerX - 100f * scale, centerY - 200f * scale,
-            centerX + 80f * scale, centerY + 100f * scale,
-            centerX + 200f * scale, centerY + 600f * scale
-        )
-    }
-    drawPath(riverPath, riverColor, style = Stroke(width = 24f * scale))
-
-    // Grid Arterials (Sudirman - Thamrin - Rasuna Said grid)
-    val gridStep = 90f * scale
-    for (i in -8..8) {
-        val y = centerY + i * gridStep
-        drawLine(
-            color = roadColor,
-            start = Offset(centerX - 800f * scale, y),
-            end = Offset(centerX + 800f * scale, y),
-            strokeWidth = 3f * scale
-        )
-
-        val x = centerX + i * gridStep
-        drawLine(
-            color = roadColor,
-            start = Offset(x, centerY - 800f * scale),
-            end = Offset(x, centerY + 800f * scale),
-            strokeWidth = 3f * scale
-        )
+    // Dynamic Updates to Leaflet Map without re-creating WebView
+    LaunchedEffect(reports, selectedReport, layerType, userLatitude, userLongitude) {
+        val reportsJson = generateReportsJson(reports)
+        val selectedId = selectedReport?.id ?: ""
+        val jsCall = "if (window.updateMap) { window.updateMap($reportsJson, '$selectedId', '${layerType.name}', $userLatitude, $userLongitude); }"
+        webView.evaluateJavascript(jsCall, null)
     }
 
-    // Main Diagonal Arterials (Gatot Subroto & Thamrin)
-    drawLine(
-        color = arterialColor,
-        start = Offset(centerX - 600f * scale, centerY - 500f * scale),
-        end = Offset(centerX + 600f * scale, centerY + 500f * scale),
-        strokeWidth = 8f * scale
-    )
-    drawLine(
-        color = arterialColor,
-        start = Offset(centerX - 600f * scale, centerY + 300f * scale),
-        end = Offset(centerX + 600f * scale, centerY - 300f * scale),
-        strokeWidth = 8f * scale
-    )
+    DisposableEffect(Unit) {
+        onDispose {
+            webView.destroy()
+        }
+    }
+
+    Box(modifier = modifier.fillMaxSize()) {
+        AndroidView(
+            factory = { webView },
+            modifier = Modifier.fillMaxSize()
+        )
+    }
 }
 
-private fun DrawScope.drawHazardPin(
-    center: Offset,
-    severity: HazardSeverity,
-    isSelected: Boolean,
-    scale: Float
-) {
-    val baseRadius = (if (isSelected) 16f else 13f) * scale.coerceIn(0.75f, 1.35f)
-    val pinColor = severity.color
+private fun generateReportsJson(reports: List<HazardReport>): String {
+    val jsonArray = JSONArray()
+    for (r in reports) {
+        val obj = JSONObject().apply {
+            put("id", r.id)
+            put("title", r.title)
+            put("category", r.category.displayName)
+            put("severity", r.severity.name)
+            put("color", getSeverityHexColor(r.severity))
+            put("lat", r.latitude)
+            put("lng", r.longitude)
+            put("address", r.address)
+        }
+        jsonArray.put(obj)
+    }
+    return jsonArray.toString()
+}
 
-    // Pin shadow
-    drawCircle(
-        color = Color.Black.copy(alpha = 0.25f),
-        radius = baseRadius + 2f,
-        center = Offset(center.x, center.y + 2f)
-    )
+private fun getSeverityHexColor(severity: HazardSeverity): String {
+    return when (severity) {
+        HazardSeverity.DARURAT -> "#EF4444"
+        HazardSeverity.TINGGI -> "#F97316"
+        HazardSeverity.SEDANG -> "#F59E0B"
+        HazardSeverity.RENDAH -> "#10B981"
+    }
+}
 
-    // Outer white halo
-    drawCircle(
-        color = Color.White,
-        radius = baseRadius + 3f,
-        center = center
-    )
+private fun generateLeafletHtml(
+    reports: List<HazardReport>,
+    selectedReportId: String?,
+    userLat: Double,
+    userLng: Double,
+    layerType: MapLayerType
+): String {
+    val reportsJson = generateReportsJson(reports)
+    val selId = selectedReportId ?: ""
 
-    // Inner filled color body
-    drawCircle(
-        color = pinColor,
-        radius = baseRadius,
-        center = center
-    )
+    return """
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+    <style>
+        html, body, #map { height: 100%; width: 100%; margin: 0; padding: 0; background: #e2e8f0; }
+        .leaflet-container { background: #e2e8f0; }
+        .hazard-pin {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            border-radius: 50%;
+            border: 2px solid #FFFFFF;
+            box-shadow: 0 4px 10px rgba(0,0,0,0.35);
+            cursor: pointer;
+            transition: transform 0.2s cubic-bezier(0.34, 1.56, 0.64, 1);
+        }
+        .hazard-pin.selected {
+            transform: scale(1.35);
+            border: 3px solid #0284C7;
+            box-shadow: 0 0 16px rgba(2,132,199,0.9);
+            z-index: 1000 !important;
+        }
+        .pin-inner {
+            width: 8px;
+            height: 8px;
+            background-color: #FFFFFF;
+            border-radius: 50%;
+        }
+        .user-marker {
+            width: 18px;
+            height: 18px;
+            background-color: #0284C7;
+            border: 3px solid #FFFFFF;
+            border-radius: 50%;
+            box-shadow: 0 0 12px rgba(2,132,199,0.8);
+            position: relative;
+        }
+        .user-pulse {
+            position: absolute;
+            top: -11px;
+            left: -11px;
+            width: 34px;
+            height: 34px;
+            border-radius: 50%;
+            background: rgba(2, 132, 199, 0.35);
+            animation: pulse-ring 1.8s infinite ease-out;
+            pointer-events: none;
+        }
+        @keyframes pulse-ring {
+            0% { transform: scale(0.6); opacity: 0.9; }
+            100% { transform: scale(2.2); opacity: 0; }
+        }
+        .popup-card {
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+            padding: 2px;
+            max-width: 200px;
+        }
+        .popup-title {
+            font-weight: 700;
+            font-size: 13px;
+            color: #0F172A;
+            margin-bottom: 4px;
+            line-height: 1.2;
+        }
+        .popup-category {
+            font-size: 11px;
+            font-weight: 600;
+            margin-bottom: 6px;
+        }
+        .popup-address {
+            font-size: 11px;
+            color: #64748B;
+        }
+    </style>
+</head>
+<body>
+    <div id="map"></div>
+    <script>
+        var map = L.map('map', { zoomControl: false, attributionControl: false }).setView([$userLat, $userLng], 14);
+        var currentTileLayer = null;
+        var hazardMarkers = {};
+        var userMarkerObj = null;
 
-    // Center icon dot / accent
-    drawCircle(
-        color = Color.White,
-        radius = baseRadius * 0.42f,
-        center = center
-    )
+        function setTileLayer(type) {
+            if (currentTileLayer) map.removeLayer(currentTileLayer);
+            var tileUrl = 'https://tile.openstreetmap.org/{z}/{x}/{y}.png';
+            if (type === 'SATELLITE') {
+                tileUrl = 'https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}';
+            } else if (type === 'HEATMAP') {
+                tileUrl = 'https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png';
+            }
+            currentTileLayer = L.tileLayer(tileUrl, { maxZoom: 19 }).addTo(map);
+        }
+
+        setTileLayer('$layerType');
+
+        map.on('click', function(e) {
+            if (window.AndroidBridge && window.AndroidBridge.onMapClicked) {
+                window.AndroidBridge.onMapClicked();
+            }
+        });
+
+        function renderUserMarker(lat, lng) {
+            if (userMarkerObj) map.removeLayer(userMarkerObj);
+            var userIcon = L.divIcon({
+                className: '',
+                html: '<div class="user-pulse"></div><div class="user-marker"></div>',
+                iconSize: [18, 18],
+                iconAnchor: [9, 9]
+            });
+            userMarkerObj = L.marker([lat, lng], { icon: userIcon, zIndexOffset: 2000 }).addTo(map);
+        }
+
+        function renderHazardMarkers(reports, selectedId) {
+            Object.keys(hazardMarkers).forEach(function(id) {
+                map.removeLayer(hazardMarkers[id]);
+            });
+            hazardMarkers = {};
+
+            reports.forEach(function(r) {
+                var isSelected = (r.id === selectedId);
+                var pinClass = isSelected ? 'hazard-pin selected' : 'hazard-pin';
+                var size = isSelected ? 30 : 24;
+
+                var customIcon = L.divIcon({
+                    className: '',
+                    html: '<div class="' + pinClass + '" style="background-color: ' + r.color + '; width: ' + size + 'px; height: ' + size + 'px;"><div class="pin-inner"></div></div>',
+                    iconSize: [size, size],
+                    iconAnchor: [size/2, size/2]
+                });
+
+                var m = L.marker([r.lat, r.lng], { icon: customIcon }).addTo(map);
+
+                var popupContent = '<div class="popup-card">' +
+                    '<div class="popup-title">' + r.title + '</div>' +
+                    '<div class="popup-category" style="color: ' + r.color + '">' + r.category + ' (' + r.severity + ')</div>' +
+                    '<div class="popup-address">' + r.address + '</div>' +
+                    '</div>';
+
+                m.bindPopup(popupContent);
+
+                m.on('click', function(e) {
+                    L.DomEvent.stopPropagation(e);
+                    if (window.AndroidBridge && window.AndroidBridge.onMarkerClicked) {
+                        window.AndroidBridge.onMarkerClicked(r.id);
+                    }
+                });
+
+                hazardMarkers[r.id] = m;
+
+                if (isSelected) {
+                    map.panTo([r.lat, r.lng], { animate: true, duration: 0.5 });
+                }
+            });
+        }
+
+        renderUserMarker($userLat, $userLng);
+        renderHazardMarkers($reportsJson, '$selId');
+
+        window.updateMap = function(reports, selectedId, layerType, userLat, userLng) {
+            setTileLayer(layerType);
+            renderUserMarker(userLat, userLng);
+            renderHazardMarkers(reports, selectedId);
+        };
+    </script>
+</body>
+</html>
+    """.trimIndent()
 }

@@ -1,5 +1,11 @@
 package com.example.infobahaya.presentation.home
 
+import android.Manifest
+import android.annotation.SuppressLint
+import android.content.Context
+import android.location.LocationManager
+import androidx.activity.compose.rememberLauncherForActivityResult
+import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
@@ -20,30 +26,35 @@ import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Add
-import androidx.compose.material.icons.filled.CloudOff
 import androidx.compose.material.icons.filled.AdminPanelSettings
 import androidx.compose.material.icons.filled.ChevronRight
+import androidx.compose.material.icons.filled.CloudOff
 import androidx.compose.material.icons.filled.Layers
+import androidx.compose.material.icons.filled.LocationOn
 import androidx.compose.material.icons.filled.MyLocation
 import androidx.compose.material.icons.filled.Warning
+import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.FloatingActionButton
 import androidx.compose.material3.Icon
-import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.viewmodel.compose.viewModel
-import com.example.infobahaya.core.theme.InfoBahayaThemeTokens
 import com.example.infobahaya.core.theme.PrimaryBlue
 import com.example.infobahaya.core.theme.SeverityEmergency
 import com.example.infobahaya.presentation.components.InfoBahayaSearchBar
@@ -61,6 +72,21 @@ fun HomeScreen(
     viewModel: HomeMapViewModel = viewModel()
 ) {
     val uiState by viewModel.uiState.collectAsState()
+    val context = LocalContext.current
+
+    var showLocationPermissionDialog by remember { mutableStateOf(false) }
+
+    val locationPermissionLauncher = rememberLauncherForActivityResult(
+        contract = ActivityResultContracts.RequestMultiplePermissions()
+    ) { permissions ->
+        val isGranted = permissions[Manifest.permission.ACCESS_FINE_LOCATION] == true ||
+                permissions[Manifest.permission.ACCESS_COARSE_LOCATION] == true
+        if (isGranted) {
+            fetchDeviceLocation(context) { lat, lng ->
+                viewModel.updateUserLocation(lat, lng)
+            }
+        }
+    }
 
     Scaffold(
         floatingActionButton = {
@@ -87,7 +113,7 @@ fun HomeScreen(
                 .fillMaxSize()
                 .padding(paddingValues)
         ) {
-            // 1. Live Interactive Hazard Map Canvas
+            // 1. Live Interactive Leaflet Hazard Map
             HazardMapCanvas(
                 reports = uiState.filteredReports,
                 selectedReport = uiState.selectedReport,
@@ -98,7 +124,7 @@ fun HomeScreen(
                 modifier = Modifier.fillMaxSize()
             )
 
-            // 2. Top Header Overlay (Search Bar + Category Filters + Emergency Banner)
+            // 2. Top Header Overlay (Search Bar + Category Filters + Banners)
             Column(
                 modifier = Modifier
                     .fillMaxWidth()
@@ -169,7 +195,7 @@ fun HomeScreen(
                     }
                 }
 
-                // Active Emergency Banner (if any)
+                // Active Emergency Banner
                 AnimatedVisibility(
                     visible = uiState.activeEmergenciesCount > 0,
                     enter = fadeIn(),
@@ -240,7 +266,7 @@ fun HomeScreen(
                 }
             }
 
-            // 3. Floating Map Controls (Right Side)
+            // 3. Floating Map Controls
             Column(
                 modifier = Modifier
                     .align(Alignment.CenterEnd)
@@ -280,8 +306,7 @@ fun HomeScreen(
                         .background(MaterialTheme.colorScheme.surface)
                         .shadow(4.dp, CircleShape)
                         .clickable {
-                            // Centering feedback
-                            viewModel.onSelectReportMarker(null)
+                            showLocationPermissionDialog = true
                         },
                     contentAlignment = Alignment.Center
                 ) {
@@ -336,6 +361,71 @@ fun HomeScreen(
                     onDismiss = { viewModel.toggleFilterDialog(false) }
                 )
             }
+
+            // 6. Location Permission Dialog Popup
+            if (showLocationPermissionDialog) {
+                AlertDialog(
+                    onDismissRequest = { showLocationPermissionDialog = false },
+                    icon = {
+                        Icon(
+                            imageVector = Icons.Default.LocationOn,
+                            contentDescription = null,
+                            tint = PrimaryBlue,
+                            modifier = Modifier.size(32.dp)
+                        )
+                    },
+                    title = {
+                        Text(
+                            text = "Izin Lokasi GPS Diperlukan",
+                            style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.Bold)
+                        )
+                    },
+                    text = {
+                        Text(
+                            text = "InfoBahaya memerlukan izin akses lokasi untuk mengunci koordinat GPS Anda secara akurat pada peta Leaflet dan mendeteksi titik bahaya terdekat.",
+                            style = MaterialTheme.typography.bodyMedium
+                        )
+                    },
+                    confirmButton = {
+                        TextButton(
+                            onClick = {
+                                showLocationPermissionDialog = false
+                                locationPermissionLauncher.launch(
+                                    arrayOf(
+                                        Manifest.permission.ACCESS_FINE_LOCATION,
+                                        Manifest.permission.ACCESS_COARSE_LOCATION
+                                    )
+                                )
+                            }
+                        ) {
+                            Text("Izinkan Akses Lokasi", color = PrimaryBlue, fontWeight = FontWeight.Bold)
+                        }
+                    },
+                    dismissButton = {
+                        TextButton(onClick = { showLocationPermissionDialog = false }) {
+                            Text("Batal")
+                        }
+                    }
+                )
+            }
         }
     }
+}
+
+@SuppressLint("MissingPermission")
+private fun fetchDeviceLocation(context: Context, onLocationResult: (Double, Double) -> Unit) {
+    try {
+        val locationManager = context.getSystemService(Context.LOCATION_SERVICE) as? LocationManager
+        if (locationManager != null) {
+            val gpsLocation = locationManager.getLastKnownLocation(LocationManager.GPS_PROVIDER)
+            val networkLocation = locationManager.getLastKnownLocation(LocationManager.NETWORK_PROVIDER)
+            val bestLocation = gpsLocation ?: networkLocation
+            if (bestLocation != null) {
+                onLocationResult(bestLocation.latitude, bestLocation.longitude)
+                return
+            }
+        }
+    } catch (_: Exception) {}
+    // Fallback Jakarta coordinate
+    onLocationResult(-6.2088, 106.8456)
 }

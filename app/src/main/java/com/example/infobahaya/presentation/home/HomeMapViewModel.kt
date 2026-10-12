@@ -128,6 +128,13 @@ class HomeMapViewModel(
         _uiState.value = _uiState.value.copy(mapLayerType = layerType)
     }
 
+    fun updateUserLocation(lat: Double, lng: Double) {
+        _uiState.value = _uiState.value.copy(
+            userLatitude = lat,
+            userLongitude = lng
+        )
+    }
+
     fun toggleFilterDialog(show: Boolean) {
         _uiState.value = _uiState.value.copy(isFilterDialogVisible = show)
     }
